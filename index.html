@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>與 AI 共創教學新篇章：國小教師 AI 初級研習</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 FontAwesome 圖示 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- 引入 Noto Sans TC 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#4F46E5', // Indigo 600
+                        secondary: '#10B981', // Emerald 500
+                        accent: '#F59E0B', // Amber 500
+                        dark: '#1E293B', // Slate 800
+                        light: '#F8FAFC', // Slate 50
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            overflow: hidden; 
+            background-color: #F8FAFC;
+            height: 100dvh; 
+        }
+        
+        /* 投影片基礎設定 */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease-in-out;
+            transform: scale(0.95) translateY(20px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem; 
+            box-sizing: border-box;
+            overflow-y: auto; 
+            overflow-x: hidden;
+        }
+        @media (min-width: 768px) {
+            .slide { padding: 3rem; }
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1) translateY(0);
+            z-index: 10;
+        }
+
+        /* 隱藏捲軸 */
+        .slide::-webkit-scrollbar { display: none; }
+        .slide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 背景裝飾 */
+        .bg-blobs {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+            top: 0;
+            left: 0;
+        }
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.4;
+            border-radius: 50%;
+            animation: float 10s infinite ease-in-out alternate;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, -50px) scale(1.1); }
+        }
+
+        /* 特效動畫 */
+        .pulse-ring { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .5; transform: scale(1.05); }
+        }
+
+        .prob-bar {
+            animation: fillBar 1s ease-out forwards;
+            transform-origin: left;
+        }
+        @keyframes fillBar {
+            0% { transform: scaleX(0); }
+            100% { transform: scaleX(1); }
+        }
+
+        /* 聲波動畫 */
+        .bar {
+            width: 8px; 
+            height: 20px;
+            background: #4F46E5;
+            border-radius: 6px;
+            animation: sound 0ms -800ms linear infinite alternate;
+        }
+        @media (min-width: 768px) { .bar { width: 12px; } }
+        @keyframes sound {
+            0% { height: 10px; opacity: 0.5; }
+            100% { height: 60px; opacity: 1; }
+        }
+        .bar:nth-child(1) { animation-duration: 474ms; }
+        .bar:nth-child(2) { animation-duration: 433ms; }
+        .bar:nth-child(3) { animation-duration: 407ms; }
+        .bar:nth-child(4) { animation-duration: 458ms; }
+        .bar:nth-child(5) { animation-duration: 400ms; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="text-dark font-sans relative">
+
+    <!-- 全域背景 -->
+    <div class="bg-blobs pointer-events-none">
+        <div class="blob bg-primary w-64 h-64 md:w-96 md:h-96 top-[-10%] left-[-10%]"></div>
+        <div class="blob bg-secondary w-56 h-56 md:w-80 md:h-80 bottom-[-10%] right-[-5%] animation-delay-2000"></div>
+    </div>
+
+    <!-- UI: 進度條 -->
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gray-200 z-50 fixed">
+        <div id="progress-bar" class="h-full bg-primary transition-all duration-300 ease-out" style="width: 5%;"></div>
+    </div>
+
+    <!-- UI: 頁碼顯示 -->
+    <div class="fixed bottom-4 md:bottom-6 right-20 md:right-24 z-50 text-gray-500 font-bold text-sm md:text-lg bg-white/60 px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
+        <span id="page-indicator">1 / 21</span>
+    </div>
+
+    <!-- UI: 控制按鈕 -->
+    <button onclick="prevSlide()" class="fixed left-2 md:left-4 top-1/2 transform -translate-y-1/2 z-50 bg-white/80 hover:bg-white text-gray-700 w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110">
+        <i class="fas fa-chevron-left text-lg md:text-xl"></i>
+    </button>
+    <button onclick="nextSlide()" class="fixed right-2 md:right-4 top-1/2 transform -translate-y-1/2 z-50 bg-white/80 hover:bg-white text-gray-700 w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110">
+        <i class="fas fa-chevron-right text-lg md:text-xl"></i>
+    </button>
+
+    <!-- UI: 目錄 -->
+    <button onclick="toggleMenu()" class="fixed bottom-4 md:bottom-6 right-4 md:right-6 z-50 bg-primary text-white w-12 h-12 md:w-14 md:h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-110 hover:bg-indigo-700">
+        <i class="fas fa-list-ul text-lg md:text-xl"></i>
+    </button>
+
+    <!-- 目錄 Modal -->
+    <div id="menu-modal" class="fixed inset-0 bg-dark/80 z-[60] hidden flex justify-center items-center backdrop-blur-sm transition-opacity opacity-0 p-4">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl p-4 md:p-8 max-h-[90vh] overflow-y-auto custom-scroll relative transform scale-95 transition-transform">
+            <button onclick="toggleMenu()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-800 text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-xl md:text-3xl font-bold mb-4 md:mb-6 text-primary border-b pb-2"><i class="fas fa-map-signs mr-2"></i> 研習目錄導覽</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4" id="menu-links"></div>
+        </div>
+    </div>
+
+    <!-- 投影片容器 -->
+    <div id="slide-container" class="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center pt-6">
+
+        <!-- Slide 1: 封面 -->
+        <section class="slide active" data-title="封面：與 AI 共創教學新篇章">
+            <div class="text-center bg-white/60 p-6 md:p-12 rounded-3xl shadow-2xl backdrop-blur-md border border-white w-full max-w-3xl">
+                <div class="inline-block bg-primary/10 text-primary px-3 py-1.5 md:px-4 md:py-2 rounded-full font-bold mb-4 md:mb-6 text-sm md:text-base tracking-wider">
+                    <i class="fas fa-chalkboard-teacher mr-2"></i> 國小教師研習
+                </div>
+                <h1 class="text-4xl sm:text-5xl md:text-6xl font-black text-dark mb-4 md:mb-6 leading-tight">
+                    與 AI 共創<br class="block md:hidden"><span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">教學新篇章</span>
+                </h1>
+                <p class="text-lg md:text-2xl text-gray-600 mb-8 md:mb-10 font-medium">從零開始的 AI 初級實戰指南</p>
+                <button onclick="nextSlide()" class="bg-primary hover:bg-indigo-700 text-white text-lg md:text-xl font-bold py-3 px-8 md:py-4 md:px-10 rounded-full shadow-lg transition-transform hover:-translate-y-1 pulse-ring w-full md:w-auto">
+                    開始探索 <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Slide 2: AI 時代的教育 -->
+        <section class="slide" data-title="AI 時代的教育心態">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center w-full px-2 md:px-8 max-w-5xl">
+                <div class="order-2 md:order-1">
+                    <h2 class="text-2xl md:text-4xl font-bold mb-4 md:mb-6 text-primary"><i class="fas fa-lightbulb mr-3"></i>AI 會取代老師嗎？</h2>
+                    <p class="text-lg md:text-2xl text-gray-700 leading-relaxed mb-4 md:mb-6">
+                        不會。但是，<strong class="text-accent border-b-4 border-accent/30 block mt-2 md:inline md:mt-0">「會使用 AI 的老師」</strong>將會取代「不會使用 AI 的老師」。
+                    </p>
+                    <div class="bg-blue-50 border-l-8 border-primary p-4 md:p-6 rounded-r-xl">
+                        <h3 class="text-lg md:text-xl font-bold mb-2">💡 今天的目標：</h3>
+                        <ul class="text-base md:text-lg text-gray-700 space-y-2">
+                            <li><i class="fas fa-check text-secondary mr-2"></i> 破除對 AI 的焦慮與迷思</li>
+                            <li><i class="fas fa-check text-secondary mr-2"></i> 掌握與 AI 溝通的正確姿勢 (Prompt)</li>
+                            <li><i class="fas fa-check text-secondary mr-2"></i> 實作：讓 AI 幫出題、抓重點！</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="flex justify-center order-1 md:order-2 mb-6 md:mb-0">
+                    <svg viewBox="0 0 400 300" class="w-2/3 md:w-full max-w-md drop-shadow-xl">
+                        <circle cx="200" cy="150" r="140" fill="#E0E7FF" />
+                        <path d="M120 250 C120 200, 160 180, 160 180 C160 180, 160 140, 160 140 C140 140, 130 120, 130 100 C130 70, 150 50, 180 50 C210 50, 230 70, 230 100 C230 120, 220 140, 200 140 C200 140, 200 180, 200 180 C200 180, 240 200, 240 250" fill="#4F46E5" />
+                        <rect x="230" y="140" width="80" height="70" rx="10" fill="#10B981" />
+                        <circle cx="250" cy="165" r="8" fill="white" />
+                        <circle cx="290" cy="165" r="8" fill="white" />
+                        <path d="M245 190 Q270 200 295 190" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+                        <path d="M270 140 L270 110" stroke="#10B981" stroke-width="4" />
+                        <circle cx="270" cy="100" r="10" fill="#F59E0B" class="pulse-ring" />
+                        <path d="M220 220 L320 220 L310 250 L230 250 Z" fill="#059669" />
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 3 (新增): 課前小故事 (漫畫翻頁) -->
+        <section class="slide" data-title="《葬送的芙莉蓮》：魔法的本質">
+            <h2 class="text-2xl md:text-4xl font-bold mb-4 text-center px-4 text-primary"><i class="fas fa-book-open mr-2 md:mr-3"></i>《葬送的芙莉蓮》：魔法的本質</h2>
+            <p class="text-base md:text-xl text-gray-600 text-center mb-4 md:mb-6 px-4">看看這段關於「魔法」的故事，與我們學習 AI 的歷程有何相似之處？</p>
+            
+            <div class="relative w-full max-w-4xl bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col items-center p-2 md:p-6 mx-2">
+                <!-- 漫畫圖片容器 -->
+                <div class="relative w-full h-[45vh] md:h-[60vh] flex justify-center items-center bg-gray-900 rounded-xl overflow-hidden shadow-inner">
+                    <!-- 使用 onerror 當圖片遺失時顯示提示佔位圖 -->
+                    <!-- 預設載入 0.webp 或 0.png (這裡以 0.webp 示範) -->
+                    <img id="comic-img" src="comic/0.webp" alt="漫畫第 0 頁" class="max-w-full max-h-full object-contain transition-opacity duration-300" onerror="this.onerror=null; this.src='https://placehold.co/800x600/1e293b/a7f3d0?text=請確認圖片檔名與副檔名(webp/png)是否正確'">
+                    
+                    <!-- 漫畫左右翻頁按鈕 -->
+                    <button onclick="prevComicPage(event)" class="absolute left-2 md:left-4 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center hover:bg-black transition-colors z-10 shadow-lg border border-white/20">
+                        <i class="fas fa-chevron-left text-lg"></i>
+                    </button>
+                    <button onclick="nextComicPage(event)" class="absolute right-2 md:right-4 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center hover:bg-black transition-colors z-10 shadow-lg border border-white/20">
+                        <i class="fas fa-chevron-right text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+        <!-- Slide 12: AI 大神比一比 -->
+        <section class="slide" data-title="當今 AI 大神比一比">
+            <h2 class="text-2xl md:text-4xl font-bold mb-4 md:mb-8 text-center text-dark">當今 AI 大神比一比</h2>
+            
+            <div class="w-full max-w-5xl bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mx-2">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700 border-b border-gray-200">
+                                <th class="p-3 md:p-4 font-bold text-sm md:text-lg">AI 模型</th>
+                                <th class="p-3 md:p-4 font-bold text-sm md:text-lg">性格特色</th>
+                                <th class="p-3 md:p-4 font-bold text-sm md:text-lg hidden md:table-cell">最強優勢</th>
+                                <th class="p-3 md:p-4 font-bold text-sm md:text-lg">最適合老師的用途</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-xs md:text-base text-gray-800">
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="p-3 md:p-4 font-black text-green-600 flex items-center"><i class="fas fa-circle-nodes mr-2"></i>ChatGPT</td>
+                                <td class="p-3 md:p-4 font-bold text-gray-700">全能王者</td>
+                                <td class="p-3 md:p-4 hidden md:table-cell">邏輯推理最強、市佔率最高</td>
+                                <td class="p-3 md:p-4 text-gray-600">處理複雜教案設計、邏輯分析</td>
+                            </tr>
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="p-3 md:p-4 font-black text-orange-600 flex items-center"><i class="fas fa-feather-alt mr-2"></i>Claude</td>
+                                <td class="p-3 md:p-4 font-bold text-gray-700">文學大師</td>
+                                <td class="p-3 md:p-4 hidden md:table-cell">語氣最自然、最懂人話不機車</td>
+                                <td class="p-3 md:p-4 text-gray-600">寫期末評語、潤飾親師聯絡簿</td>
+                            </tr>
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="p-3 md:p-4 font-black text-blue-600 flex items-center"><i class="fas fa-gem mr-2"></i>Gemini</td>
+                                <td class="p-3 md:p-4 font-bold text-gray-700">萬事通</td>
+                                <td class="p-3 md:p-4 hidden md:table-cell">找資料超快、無縫串接 Google</td>
+                                <td class="p-3 md:p-4 text-gray-600">總結 YouTube 影片、生成測驗卷</td>
+                            </tr>
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="p-3 md:p-4 font-black text-sky-500 flex items-center"><i class="fab fa-windows mr-2"></i>Copilot</td>
+                                <td class="p-3 md:p-4 font-bold text-gray-700">辦公助手</td>
+                                <td class="p-3 md:p-4 hidden md:table-cell">直接內建於微軟 Office 生態</td>
+                                <td class="p-3 md:p-4 text-gray-600">自動生成 PPT 草稿、Word 排版</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="p-3 md:p-4 font-black text-gray-900 flex items-center"><i class="fas fa-bolt mr-2"></i>Grok</td>
+                                <td class="p-3 md:p-4 font-bold text-gray-700">叛逆天才</td>
+                                <td class="p-3 md:p-4 hidden md:table-cell">即時抓取 X (Twitter) 最新時事</td>
+                                <td class="p-3 md:p-4 text-gray-600">探索最新時事話題、媒體識讀</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 4: AI 怎麼思考 -->
+        <section class="slide" data-title="解密一：AI 怎麼思考？(字串機率)">
+            <h2 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 text-center px-4"><i class="fas fa-brain text-primary mr-2 md:mr-3"></i>AI 其實是個「字串機率預測機」</h2>
+            <p class="text-base md:text-xl text-gray-600 text-center mb-6 md:mb-8 px-4">AI 並不是在「想」，而是在計算<strong class="text-primary block md:inline">「下一個字出現的最高機率」</strong>。</p>
+            
+            <div class="flex flex-col gap-4 md:gap-6 w-full max-w-5xl px-2">
+                <!-- 第一步 -->
+                <div class="flex flex-col md:flex-row items-center gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-2xl shadow-lg border border-gray-100 w-full relative mt-4 md:mt-0">
+                    <div class="absolute -top-3 left-4 md:left-6 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-bold">第一步：給予提示詞</div>
+                    <div class="flex gap-2 text-xl md:text-2xl font-bold bg-blue-50 px-4 md:px-6 py-3 md:py-4 rounded-xl border border-blue-200 shadow-inner mt-2 md:mt-0">
+                        <span class="text-blue-800">明倫老師</span>
+                    </div>
+                    <i class="fas fa-arrow-down md:fa-arrow-right text-gray-400 text-2xl md:text-3xl animate-pulse"></i>
+                    <div class="flex flex-col gap-2 md:gap-3 flex-grow bg-gray-50 p-3 md:p-4 rounded-xl border border-gray-200 w-full md:w-auto">
+                        <div class="text-xs md:text-sm font-bold text-gray-500 border-b pb-1">預測下一個字：</div>
+                        <div class="flex items-center justify-between bg-green-100 border border-green-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 relative overflow-hidden shadow-sm">
+                            <div class="absolute left-0 top-0 bottom-0 bg-green-300 z-0 prob-bar" style="width: 85%"></div>
+                            <span class="relative z-10 font-bold text-green-900 text-lg md:text-xl">很</span>
+                            <span class="relative z-10 text-green-800 font-mono font-bold text-sm md:text-base">85%</span>
+                        </div>
+                        <div class="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-1.5 relative overflow-hidden">
+                            <div class="absolute left-0 top-0 bottom-0 bg-gray-200 z-0 prob-bar" style="width: 8%"></div>
+                            <span class="relative z-10 font-bold text-gray-700 text-sm">教</span>
+                            <span class="relative z-10 text-gray-500 font-mono text-xs">8%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 第二步 -->
+                <div class="flex flex-col md:flex-row items-center gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-2xl shadow-lg border border-gray-100 w-full relative mt-4 md:mt-2">
+                    <div class="absolute -top-3 left-4 md:left-6 bg-purple-500 text-white text-xs px-2 py-1 rounded-full font-bold">第二步：加新字繼續猜</div>
+                    <div class="flex gap-1 md:gap-2 text-xl md:text-2xl font-bold bg-blue-50 px-4 md:px-6 py-3 md:py-4 rounded-xl border border-blue-200 shadow-inner mt-2 md:mt-0 flex-wrap justify-center">
+                        <span class="text-blue-800">明倫老師</span>
+                        <span class="text-green-700 border-b-4 border-green-500">很</span>
+                    </div>
+                    <i class="fas fa-arrow-down md:fa-arrow-right text-gray-400 text-2xl md:text-3xl animate-pulse" style="animation-delay: 0.5s"></i>
+                    <div class="flex flex-col gap-2 md:gap-3 flex-grow bg-gray-50 p-3 md:p-4 rounded-xl border border-gray-200 w-full md:w-auto">
+                        <div class="text-xs md:text-sm font-bold text-gray-500 border-b pb-1">再次預測：</div>
+                        <div class="flex items-center justify-between bg-purple-100 border border-purple-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 relative overflow-hidden shadow-sm">
+                            <div class="absolute left-0 top-0 bottom-0 bg-purple-300 z-0 prob-bar" style="width: 70%; animation-delay: 0.5s;"></div>
+                            <span class="relative z-10 font-bold text-purple-900 text-lg md:text-xl">帥</span>
+                            <span class="relative z-10 text-purple-800 font-mono font-bold text-sm md:text-base">70%</span>
+                        </div>
+                        <div class="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-1.5 relative overflow-hidden">
+                            <div class="absolute left-0 top-0 bottom-0 bg-gray-200 z-0 prob-bar" style="width: 15%; animation-delay: 0.5s;"></div>
+                            <span class="relative z-10 font-bold text-gray-700 text-sm">閒</span>
+                            <span class="relative z-10 text-gray-500 font-mono text-xs">15%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 5: 什麼是 Token -->
+        <section class="slide" data-title="解密二：什麼是 Token？">
+            <h2 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 text-center px-4"><i class="fas fa-puzzle-piece text-accent mr-3"></i>AI 眼中的世界：Token</h2>
+            <p class="text-base md:text-xl text-gray-600 text-center mb-6 md:mb-10 px-4">AI 不懂「字」，它只看懂它切好的「積木塊」。</p>
+
+            <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 px-2">
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-md">
+                    <h3 class="font-bold text-lg md:text-xl mb-3 md:mb-4 border-b pb-2 text-gray-700">英文的切法 (約1字=1塊)</h3>
+                    <div class="flex flex-wrap gap-2 text-base md:text-lg font-mono">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded border border-blue-200">Apple</span>
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded border border-green-200">is</span>
+                        <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded border border-yellow-200">tasty</span>
+                        <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">.</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-md">
+                    <h3 class="font-bold text-lg md:text-xl mb-3 md:mb-4 border-b pb-2 text-gray-700">中文的切法 (常被切碎)</h3>
+                    <div class="flex flex-wrap gap-2 text-base md:text-lg font-bold">
+                        <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded border border-indigo-200">人工智慧</span>
+                        <span class="bg-rose-100 text-rose-800 px-2 py-1 rounded border border-rose-200">很</span>
+                        <span class="bg-teal-100 text-teal-800 px-2 py-1 rounded border border-teal-200">厲</span>
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded border border-purple-200">害</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 md:mt-8 bg-amber-50 border-l-4 border-accent p-4 max-w-4xl w-full rounded-r-lg mx-2 text-sm md:text-base">
+                <p class="font-bold text-amber-900 mb-1">👩‍🏫 老師請注意：</p>
+                <p class="text-amber-800">當您使用的Gem、BOT需要輸入AI的API時：<strong class="text-red-600">請注意不要開啟帳單功能...</strong></p>
+            </div>
+        </section>
+
+        <!-- Slide 6: 什麼是 Prompt (新增頁) -->
+        <section class="slide" data-title="什麼是 Prompt (提示詞)？">
+            <h2 class="text-2xl md:text-4xl font-bold mb-4 md:mb-8 text-center text-primary">什麼是 Prompt (提示詞)？</h2>
+            <p class="text-base md:text-xl text-gray-600 text-center mb-6 md:mb-10 px-4">掌握 Prompt，就是掌握使喚 AI 的魔法。</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full max-w-5xl px-2">
+                <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center border-t-4 border-blue-500 hover:-translate-y-2 transition-transform">
+                    <i class="fas fa-wand-magic-sparkles text-4xl text-blue-500 mb-4"></i>
+                    <h3 class="font-bold text-xl mb-2 text-gray-800">魔法咒語</h3>
+                    <p class="text-sm text-gray-600">Prompt 就是你對 AI 下達的「指令」。你唸的咒語越精確，產生的法術效果就越強大。</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center border-t-4 border-green-500 hover:-translate-y-2 transition-transform">
+                    <i class="fas fa-steering-wheel text-4xl text-green-500 mb-4"></i>
+                    <h3 class="font-bold text-xl mb-2 text-gray-800">方向盤</h3>
+                    <p class="text-sm text-gray-600">AI 是一台馬力強大的超級跑車，而 Prompt 是方向盤。沒握好方向盤，跑得再快也會偏離目的地。</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center border-t-4 border-purple-500 hover:-translate-y-2 transition-transform">
+                    <i class="fas fa-user-graduate text-4xl text-purple-500 mb-4"></i>
+                    <h3 class="font-bold text-xl mb-2 text-gray-800">指導實習生</h3>
+                    <p class="text-sm text-gray-600">把 AI 當作一位聰明但毫無常識的實習生。把背景、任務、格式一次交代清楚，他才能做好工作。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 7: Prompt 提示詞黃金架構 -->
+        <section class="slide" data-title="指令的藝術：Prompt 黃金法則">
+            <h2 class="text-2xl md:text-4xl font-bold mb-2 text-center text-primary">Prompt 黃金法則</h2>
+            <p class="text-sm md:text-xl text-gray-600 text-center mb-4 md:mb-8 px-4">運用四個維度，把實習生教到好！</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-5xl px-2">
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-lg border-t-4 border-blue-500">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-xl md:text-2xl mb-3"><i class="fas fa-user-tie"></i></div>
+                    <h3 class="font-bold text-lg md:text-xl mb-1 md:mb-2">1. 角色</h3>
+                    <div class="mt-2 bg-gray-50 p-2 rounded text-xs md:text-sm text-gray-700 font-mono">"你是一位擁有 10 年經驗的國小高年級自然老師..."</div>
+                </div>
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-lg border-t-4 border-green-500">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-xl md:text-2xl mb-3"><i class="fas fa-tasks"></i></div>
+                    <h3 class="font-bold text-lg md:text-xl mb-1 md:mb-2">2. 任務</h3>
+                    <div class="mt-2 bg-gray-50 p-2 rounded text-xs md:text-sm text-gray-700 font-mono">"請幫我出 5 題關於『昆蟲生命週期』的單選題..."</div>
+                </div>
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-lg border-t-4 border-yellow-500">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-xl md:text-2xl mb-3"><i class="fas fa-map-marker-alt"></i></div>
+                    <h3 class="font-bold text-lg md:text-xl mb-1 md:mb-2">3. 背景</h3>
+                    <div class="mt-2 bg-gray-50 p-2 rounded text-xs md:text-sm text-gray-700 font-mono">"受眾是國小三年級學生，程度中等，這是單元複習..."</div>
+                </div>
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-lg border-t-4 border-purple-500">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-purple-100 text-purple-500 rounded-full flex items-center justify-center text-xl md:text-2xl mb-3"><i class="fas fa-clipboard-list"></i></div>
+                    <h3 class="font-bold text-lg md:text-xl mb-1 md:mb-2">4. 規則</h3>
+                    <div class="mt-2 bg-gray-50 p-2 rounded text-xs md:text-sm text-gray-700 font-mono">"必須附上詳解，並以表格呈現，文字加上注音..."</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 8: 好壞 Prompt 案例對決 -->
+        <section class="slide" data-title="案例對決：壞指令 vs 好指令">
+            <h2 class="text-2xl md:text-4xl font-bold mb-4 md:mb-8 text-center"><i class="fas fa-bolt text-yellow-500 mr-2"></i>好壞指令大對決</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 w-full max-w-5xl px-2">
+                <!-- 壞指令 -->
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-red-100">
+                    <div class="bg-red-50 px-4 py-3 border-b border-red-100 flex items-center">
+                        <i class="fas fa-times-circle text-red-500 text-xl mr-2"></i>
+                        <h3 class="font-bold text-lg md:text-xl text-red-700">麻瓜指令 (太簡短)</h3>
+                    </div>
+                    <div class="p-4 md:p-6">
+                        <div class="bg-gray-100 p-3 rounded-lg font-mono text-gray-800 mb-3 shadow-inner text-sm md:text-base">
+                            "幫我出五題自然考卷。"
+                        </div>
+                        <ul class="text-gray-600 space-y-1 text-xs md:text-sm">
+                            <li><i class="fas fa-bug text-red-400 mr-1"></i> 結果超出範疇（出現國高中生物細胞分裂）。</li>
+                            <li><i class="fas fa-bug text-red-400 mr-1"></i> 沒解答，老師還要自己找答案。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 好指令 -->
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-green-100 relative mt-4 md:mt-0">
+                    <div class="absolute top-0 right-0 bg-green-500 text-white px-2 py-1 rounded-bl-lg font-bold text-xs md:text-sm shadow">推薦寫法</div>
+                    <div class="bg-green-50 px-4 py-3 border-b border-green-100 flex items-center">
+                        <i class="fas fa-check-circle text-green-500 text-xl mr-2"></i>
+                        <h3 class="font-bold text-lg md:text-xl text-green-700">魔法師指令</h3>
+                    </div>
+                    <div class="p-4 md:p-6">
+                        <div class="bg-gray-800 text-green-400 p-3 md:p-4 rounded-lg font-mono text-xs md:text-sm shadow-inner leading-relaxed">
+                            <span class="text-blue-300">[角色]</span> 你是幽默的國小自然老師。<br>
+                            <span class="text-yellow-300">[任務]</span> 請出 5 題關於「昆蟲變態」單選題。<br>
+                            <span class="text-pink-300">[背景]</span> 對象是小四生。<br>
+                            <span class="text-purple-300">[規則]</span> 結合生活昆蟲，並用 Markdown 表格呈現。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 9: 認識 AI 幻覺 -->
+        <section class="slide" data-title="小心陷阱：什麼是 AI 幻覺？">
+            <div class="flex flex-col items-center w-full max-w-4xl text-center px-4">
+                <div class="bg-red-100 text-red-600 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl md:text-4xl mb-4 md:mb-6 shadow-lg">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h2 class="text-2xl md:text-4xl font-bold mb-3 md:mb-6 text-dark">AI 最大的罩門：幻覺</h2>
+                <p class="text-base md:text-2xl text-gray-700 mb-4 md:mb-8">為了完美接上高機率字串，AI 會<strong class="text-red-500">一本正經地胡說八道</strong>。</p>
+                
+                <div class="relative w-full bg-white p-4 md:p-8 rounded-2xl shadow-xl border border-gray-200 mt-2">
+                    <div class="flex justify-around items-center opacity-80 mb-4 md:mb-6">
+                        <div class="text-center w-1/3">
+                            <i class="fas fa-database text-2xl md:text-4xl text-gray-400 mb-1"></i><br>
+                            <span class="text-xs md:text-sm">資料不足/冷門</span>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-300 text-xl md:text-2xl"></i>
+                        <div class="text-center relative w-1/3">
+                            <i class="fas fa-robot text-4xl md:text-6xl text-primary relative z-10"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-300 text-xl md:text-2xl"></i>
+                        <div class="text-center w-1/3">
+                            <i class="fas fa-file-alt text-2xl md:text-4xl text-red-400 mb-1"></i><br>
+                            <span class="text-xs md:text-sm font-bold text-red-500">捏造事實</span>
+                        </div>
+                    </div>
+                    <p class="text-xs md:text-sm text-gray-500 bg-gray-50 p-2 md:p-3 rounded border border-gray-200">當你問它冷門或不存在的歷史時，它預測出來的字詞在語法上可能完全正確（聽起來超有說服力），但內容卻是 100% 虛構的！</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 10: 幻覺災難現場 -->
+        <section class="slide" data-title="幻覺災難現場展示">
+            <h2 class="text-2xl md:text-4xl font-bold mb-4 md:mb-8 text-center px-4">😱 幻覺災難現場</h2>
+            
+            <div class="w-full max-w-4xl bg-gray-100 rounded-xl overflow-hidden shadow-2xl border border-gray-300 mx-2">
+                <div class="bg-gray-200 px-3 py-2 border-b border-gray-300 flex items-center">
+                    <div class="flex space-x-1.5 mr-3">
+                        <div class="w-2.5 h-2.5 bg-red-400 rounded-full"></div>
+                        <div class="w-2.5 h-2.5 bg-yellow-400 rounded-full"></div>
+                        <div class="w-2.5 h-2.5 bg-green-400 rounded-full"></div>
+                    </div>
+                    <span class="text-xs md:text-sm text-gray-600 font-mono">Chatbot Demo</span>
+                </div>
+                <div class="flex flex-col gap-4 md:gap-6 p-4 md:p-6 w-full">
+                    <div class="self-end bg-blue-500 text-white p-3 md:p-4 rounded-2xl rounded-tr-none max-w-[90%] shadow text-sm md:text-lg break-words">
+                        請說明 1884 年清法戰爭中，劉銘傳在台灣的戰績。
+                    </div>
+                    <div class="self-start bg-white p-3 md:p-4 rounded-2xl rounded-tl-none max-w-[95%] md:max-w-[90%] shadow border border-red-200 relative mt-3 break-words">
+                        <div class="absolute -top-3 -left-2 md:-left-3 bg-red-500 text-white text-[10px] md:text-xs px-2 py-1 rounded-full font-bold animate-bounce z-10 whitespace-nowrap">幻覺發生！</div>
+                        <p class="text-gray-800 leading-relaxed text-sm md:text-lg break-words text-wrap">
+                            1884年清法戰爭爆發，巡撫劉銘傳親自督戰，帶領軍隊在 <strong class="text-red-600 bg-red-100 px-1">台南安平港</strong> 與法軍展開激烈交戰，最終成功擊退敵軍，保衛了南台灣的安危...
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 md:mt-8 bg-amber-50 border-l-4 border-amber-500 p-3 md:p-4 max-w-4xl w-full rounded-r-lg mx-2 text-left shadow-sm">
+                <h4 class="font-bold text-amber-900 text-sm md:text-lg mb-1"><i class="fas fa-search"></i> 老師才看得出的破綻：</h4>
+                <p class="text-amber-800 text-xs md:text-base">清法戰爭在台灣的戰場是<strong>「基隆」與「淡水」</strong>，完全沒有打到台南！AI 的人物正確、語氣通順，但地點<strong>張冠李戴</strong>。這種半真半假的幻覺，若沒有教學專業很容易被騙！</p>
+            </div>
+        </section>
+
+        <!-- Slide 11: 教師防範守則 -->
+        <section class="slide" data-title="防範幻覺：教師自保守則">
+            <div class="flex flex-col items-center w-full max-w-4xl px-2">
+                <h2 class="text-2xl md:text-4xl font-bold mb-4 md:mb-10 text-center"><i class="fas fa-shield-alt text-primary mr-2"></i>教師防身術</h2>
+                
+                <div class="grid w-full gap-3 md:gap-6">
+                    <div class="bg-white p-4 md:p-6 rounded-xl border-l-4 md:border-l-8 border-yellow-400 shadow flex items-center">
+                        <div class="w-10 h-10 md:w-16 md:h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-xl md:text-3xl mr-3 md:mr-6 flex-shrink-0">1</div>
+                        <div>
+                            <h3 class="font-bold text-lg md:text-2xl mb-1 text-gray-800">自己要有「領域知識」</h3>
+                            <p class="text-gray-600 text-xs md:text-base">絕不讓 AI 備一堂「自己完全不懂」的課，老師是最後審查員。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 md:p-6 rounded-xl border-l-4 md:border-l-8 border-blue-400 shadow flex items-center">
+                        <div class="w-10 h-10 md:w-16 md:h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl md:text-3xl mr-3 md:mr-6 flex-shrink-0">2</div>
+                        <div>
+                            <h3 class="font-bold text-lg md:text-2xl mb-1 text-gray-800">要求提供來源</h3>
+                            <p class="text-gray-600 text-xs md:text-base">加入指令：<code class="bg-gray-100 px-1 rounded text-red-500">附上來源，不知道請說不知道。</code></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-6 rounded-xl border-l-4 md:border-l-8 border-green-500 shadow flex items-center border-2 border-green-500 relative">
+                        <div class="absolute -top-3 -right-2 md:-top-4 md:-right-4 bg-green-500 text-white font-bold px-2 py-0.5 md:px-4 md:py-1 rounded-full shadow-lg text-xs md:text-sm">終極絕招</div>
+                        <div class="w-10 h-10 md:w-16 md:h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xl md:text-3xl mr-3 md:mr-6 flex-shrink-0">3</div>
+                        <div>
+                            <h3 class="font-bold text-lg md:text-2xl mb-1 text-gray-800">給定範圍，限制自由 (RAG)</h3>
+                            <p class="text-gray-600 text-xs md:text-base">把課本餵給它，要求 <code class="bg-green-50 px-1 border border-green-200 rounded text-green-700">只能根據提供文本回答</code>。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 13: 實戰一 Gemini -->
+        <section class="slide" data-title="實戰一：認識 Gemini 與 Gems">
+            <div class="text-center w-full max-w-5xl px-4">
+                <div class="inline-block bg-gradient-to-r from-blue-100 to-purple-100 text-primary px-4 py-1.5 md:px-6 md:py-2 rounded-full font-bold mb-4 md:mb-6 text-sm md:text-xl">
+                    <i class="fas fa-hammer mr-2"></i> 實戰演練 (一)
+                </div>
+                <h2 class="text-3xl md:text-5xl font-black mb-6 md:mb-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Gemini 神奇出題機</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 text-left">
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl">
+                        <h3 class="text-xl md:text-2xl font-bold mb-2 md:mb-4 text-center">認識 Gemini</h3>
+                        <p class="text-gray-600 text-sm md:text-lg leading-relaxed">Google 研發的超強 AI 模型。與 Google Workspace 整合良好，對台灣中文理解非常道地。</p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-6 md:p-8 rounded-2xl shadow-xl relative overflow-hidden">
+                        <h3 class="text-xl md:text-2xl font-bold mb-2 md:mb-4 relative z-10"><i class="fas fa-gem mr-2 text-yellow-300"></i>什麼是 Gems？</h3>
+                        <p class="text-indigo-100 text-sm md:text-lg leading-relaxed relative z-10 mb-2 md:mb-4">像影分身之術！把「複雜的 Prompt」存起來，打造專屬助理。</p>
+                        <ul class="space-y-1 font-bold relative z-10 text-xs md:text-lg">
+                            <li>✨ 專屬國語科造句助教</li>
+                            <li>✨ 社會科探究小幫手</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 14: Gem 實作步驟 1 (Mockup修正版) -->
+        <section class="slide" data-title="實作：建立專屬 Gem (真實介面)">
+            <h2 class="text-xl md:text-3xl font-bold mb-4 w-full text-left pl-4 border-l-4 md:border-l-8 border-primary"><span class="text-gray-400 mr-2">STEP 1.</span>建立 Gem (賦予身分)</h2>
+            
+            <div class="w-full max-w-5xl flex flex-col md:flex-row gap-6 mx-2">
+                <!-- Mockup Left Panel -->
+                <div class="w-full md:w-1/4 bg-[#1e1f20] text-gray-300 rounded-xl p-4 flex flex-col gap-4 shadow-xl text-sm">
+                    <div class="font-bold flex items-center text-white"><i class="fas fa-bars mr-3"></i>Gemini</div>
+                    <div class="bg-blue-600 text-white py-2 px-3 rounded-full flex items-center justify-center font-bold cursor-pointer">
+                        <i class="fas fa-plus mr-2"></i> 新對話
+                    </div>
+                    <div class="mt-4 border-t border-gray-700 pt-4 flex flex-col gap-3">
+                        <div class="text-gray-400 text-xs">最近</div>
+                        <div class="truncate"><i class="far fa-comment-alt mr-2"></i> 國小數學教案...</div>
+                        <div class="truncate"><i class="far fa-comment-alt mr-2"></i> 家長日通知書...</div>
+                    </div>
+                    <div class="mt-auto bg-[#282a2c] p-3 rounded-lg flex items-center font-bold text-white cursor-pointer relative shadow border border-gray-600">
+                        <i class="fas fa-shapes mr-3 text-purple-400"></i> Gem 管理員
+                        <span class="absolute -top-2 -right-2 flex h-4 w-4">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-4 w-4 bg-red-500 border border-white"></span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Mockup Main Area -->
+                <div class="w-full md:w-3/4 bg-[#1e1f20] rounded-xl overflow-hidden shadow-xl text-left border border-gray-700 flex flex-col">
+                    <div class="bg-[#282a2c] px-4 py-3 flex items-center border-b border-gray-700">
+                        <div class="text-white font-bold"><i class="fas fa-pencil-alt text-gray-400 mr-2"></i> 建立新的 Gem</div>
+                    </div>
+                    <div class="p-6 md:p-8 flex flex-col gap-6">
+                        <div>
+                            <label class="block text-gray-400 text-xs md:text-sm font-bold mb-2">名稱</label>
+                            <input type="text" value="國小社會出題大師" readonly class="w-full md:w-1/2 bg-[#1e1f20] text-white text-sm md:text-base border-b border-gray-500 py-1.5 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-xs md:text-sm font-bold mb-2">操作說明</label>
+                            <textarea readonly rows="6" class="w-full bg-[#282a2c] text-green-300 font-mono text-xs md:text-sm rounded-xl py-3 px-4 resize-none border border-gray-600 focus:outline-none leading-relaxed">你是一位資深的國小社會老師。
+當我給你一段課文時，請幫我出 3 題選擇題與 1 題情境題。
+規則：
+1. 必須符合國小中高年級學生的理解能力。
+2. 附上詳細解析，說明易錯觀念。
+3. 輸出格式必須為 Markdown 表格。</textarea>
+                        </div>
+                        <div class="text-right mt-2">
+                            <span class="bg-white text-black font-bold px-6 py-2 rounded-full text-sm inline-block shadow">儲存</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 15: Gem 實作步驟 2 -->
+        <section class="slide" data-title="實作：餵養教材 (防範幻覺)">
+            <h2 class="text-xl md:text-3xl font-bold mb-4 md:mb-6 w-full text-left pl-4 border-l-4 md:border-l-8 border-secondary"><span class="text-gray-400 mr-2">STEP 2.</span>餵養教材 (鎖定範圍)</h2>
+            
+            <div class="w-full max-w-4xl flex flex-col items-center px-2">
+                <p class="text-sm md:text-xl mb-4 md:mb-8 text-gray-700 text-center">把「國小課本內容」(電子書)直接餵給剛才做好的 Gem，避免 AI 亂編題目。</p>
+                
+                <div class="w-full border-2 md:border-4 border-dashed border-gray-300 rounded-2xl md:rounded-3xl p-6 md:p-12 bg-gray-50 flex flex-col items-center justify-center">
+                    <div class="flex gap-4 md:gap-6 mb-4 md:mb-6">
+                        <i class="fas fa-file-pdf text-4xl md:text-6xl text-red-500"></i>
+                        <i class="fas fa-file-word text-4xl md:text-6xl text-blue-600"></i>
+                        <i class="fas fa-image text-4xl md:text-6xl text-green-500"></i>
+                    </div>
+                    <h3 class="text-lg md:text-2xl font-bold text-gray-800 mb-1 md:mb-2">點擊或拖曳檔案至此</h3>
+                    <p class="text-xs md:text-base text-gray-500 mb-4 md:mb-6 text-center">支援上傳 PDF、電子書截圖，或從雲端硬碟匯入</p>
+                    
+                    <div class="w-full max-w-md bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200 relative">
+                        <span class="absolute -top-3 left-4 bg-primary text-white text-[10px] md:text-xs px-2 py-1 rounded">使用者的對話框</span>
+                        <p class="text-gray-700 mt-2 font-mono text-xs md:text-sm">"請根據這份上傳的『國小社會：台灣地形與氣候』PDF 出題。"</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 md:mt-8 bg-green-100 text-green-800 px-4 py-2 md:px-6 md:py-3 rounded-full font-bold shadow-sm text-xs md:text-base">
+                    <i class="fas fa-lock mr-2"></i> 加上咒語：「務必只根據提供內容出題，嚴禁超出範疇！」
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 16: Gem 實作步驟 3 (打字機效果) -->
+        <section class="slide" data-title="實作：魔法展現 (打字機動畫)" data-typewriter="true">
+            <h2 class="text-xl md:text-3xl font-bold mb-4 w-full text-left pl-4 border-l-4 md:border-l-8 border-accent"><span class="text-gray-400 mr-2">STEP 3.</span>魔法展現</h2>
+            
+            <div class="w-full max-w-5xl bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col h-[50vh] md:h-[60vh] mx-2">
+                <div class="bg-gray-100 p-2 md:p-4 border-b flex items-center text-sm md:text-base">
+                    <i class="fas fa-gem text-indigo-500 mr-2"></i><span class="font-bold text-gray-700">國小社會科出題大師 正在生成...</span>
+                </div>
+                <div class="p-4 md:p-6 flex-grow overflow-y-auto bg-gray-50 custom-scroll relative">
+                    <div id="typewriter-container" class="font-mono text-gray-800 text-xs md:text-base leading-relaxed whitespace-pre-wrap break-all"></div>
+                    <span id="cursor" class="inline-block w-2 h-4 md:h-5 bg-primary ml-1 animate-pulse opacity-0"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 17: 進入 NotebookLM -->
+        <section class="slide" data-title="實戰二：為什麼要用 NotebookLM？">
+            <div class="text-center w-full max-w-5xl px-2">
+                <div class="inline-block bg-gradient-to-r from-emerald-100 to-teal-100 text-secondary px-4 py-1.5 md:px-6 md:py-2 rounded-full font-bold mb-4 md:mb-6 text-sm md:text-xl">
+                    <i class="fas fa-book-reader mr-2"></i> 實戰演練 (二)
+                </div>
+                <h2 class="text-3xl md:text-5xl font-black mb-4 md:mb-8 text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">NotebookLM 專屬備課助理</h2>
+                
+                <h3 class="text-lg md:text-2xl font-bold mb-6 md:mb-10 text-gray-700">為什麼有了 Gemini，還需要 NotebookLM？</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow border-t-4 border-gray-400 relative">
+                        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gray-600 text-white px-3 py-1 rounded-full text-xs md:text-sm font-bold">一般 AI (易幻覺)</div>
+                        <i class="fas fa-globe text-3xl md:text-5xl text-gray-300 mb-3 md:mb-4"></i>
+                        <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800">「閉卷考試」</h4>
+                        <p class="text-gray-600 text-left text-sm md:text-base">靠龐大記憶回答，容易瞎掰。很難一次記住一整本 150 頁國小教科書。</p>
+                    </div>
+
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-secondary relative transform md:scale-105 mt-4 md:mt-0">
+                        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-secondary text-white px-3 py-1 rounded-full text-xs md:text-sm font-bold shadow">NotebookLM (RAG)</div>
+                        <div class="flex justify-center items-center mb-3 md:mb-4 space-x-2">
+                            <i class="fas fa-file-pdf text-xl md:text-3xl text-red-400"></i>
+                            <i class="fas fa-link text-xl md:text-3xl text-blue-400"></i>
+                            <i class="fas fa-arrow-right text-gray-300"></i>
+                            <i class="fas fa-database text-3xl md:text-5xl text-secondary"></i>
+                        </div>
+                        <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800">「開卷考試」</h4>
+                        <p class="text-gray-600 text-left text-sm md:text-base">你給什麼資料，它「只能」從裡面找答案。成為你專屬課本的超級搜尋引擎。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 18: NotebookLM 步驟 1 -->
+        <section class="slide" data-title="NotebookLM：建立資料庫">
+            <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-8 w-full text-center text-dark px-2">NotebookLM 第一步：建立教材庫</h2>
+            
+            <div class="w-full max-w-4xl bg-white p-6 md:p-10 rounded-3xl shadow-lg flex flex-col items-center border border-gray-100 mx-2">
+                <p class="text-sm md:text-xl text-gray-600 mb-6 md:mb-8 text-center">支援上傳最多 50 個來源，每個最高 50 萬字！</p>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 w-full mb-6 md:mb-8">
+                    <div class="flex flex-col items-center p-3 md:p-4 bg-red-50 rounded-xl border border-red-100 text-center">
+                        <i class="fas fa-file-pdf text-2xl md:text-4xl text-red-500 mb-2"></i>
+                        <span class="font-bold text-gray-700 text-xs md:text-base">備課 PDF</span>
+                    </div>
+                    <div class="flex flex-col items-center p-3 md:p-4 bg-blue-50 rounded-xl border border-blue-100 text-center">
+                        <i class="fab fa-google-drive text-2xl md:text-4xl text-blue-500 mb-2"></i>
+                        <span class="font-bold text-gray-700 text-xs md:text-base">Google 文件</span>
+                    </div>
+                    <div class="flex flex-col items-center p-3 md:p-4 bg-green-50 rounded-xl border border-green-100 text-center">
+                        <i class="fas fa-globe text-2xl md:text-4xl text-green-500 mb-2"></i>
+                        <span class="font-bold text-gray-700 text-xs md:text-base">網頁連結</span>
+                    </div>
+                    <div class="flex flex-col items-center p-3 md:p-4 bg-purple-50 rounded-xl border border-purple-100 text-center">
+                        <i class="fab fa-youtube text-2xl md:text-4xl text-red-600 mb-2"></i>
+                        <span class="font-bold text-gray-700 text-xs md:text-base">YouTube 影片</span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 text-white w-full p-4 md:p-6 rounded-xl relative">
+                    <div class="absolute -top-3 left-4 md:left-6 bg-secondary text-white text-[10px] md:text-xs px-2 py-1 rounded">老師超愛的使用情境</div>
+                    <p class="text-xs md:text-lg">「我把『五年級社會電子書 PDF』加上『台灣吧 3 支影片』丟進去，它就變成了我的專屬社會科備課精靈！」</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 19: NotebookLM 步驟 2 -->
+        <section class="slide" data-title="NotebookLM：智能統整與提問">
+            <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-6 w-full text-center px-2">NotebookLM 第二步：一鍵智能統整</h2>
+            
+            <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 px-2">
+                <!-- 左側面板 -->
+                <div class="md:col-span-1 grid grid-cols-3 md:grid-cols-1 gap-2 md:gap-4">
+                    <div class="bg-white p-2 md:p-5 rounded-xl shadow border-l-4 border-blue-500 text-center md:text-left">
+                        <h4 class="font-bold text-xs md:text-lg mb-1 md:mb-1"><i class="fas fa-list-ul text-blue-500 md:mr-2 block md:inline mb-1 md:mb-0"></i>生成摘要</h4>
+                        <p class="text-[10px] md:text-sm text-gray-600 hidden md:block">自動抓出核心大綱。</p>
+                    </div>
+                    <div class="bg-white p-2 md:p-5 rounded-xl shadow border-l-4 border-green-500 text-center md:text-left">
+                        <h4 class="font-bold text-xs md:text-lg mb-1 md:mb-1"><i class="fas fa-question-circle text-green-500 md:mr-2 block md:inline mb-1 md:mb-0"></i>常見問題</h4>
+                        <p class="text-[10px] md:text-sm text-gray-600 hidden md:block">預測學生可能會問的難題。</p>
+                    </div>
+                    <div class="bg-white p-2 md:p-5 rounded-xl shadow border-l-4 border-purple-500 text-center md:text-left">
+                        <h4 class="font-bold text-xs md:text-lg mb-1 md:mb-1"><i class="fas fa-graduation-cap text-purple-500 md:mr-2 block md:inline mb-1 md:mb-0"></i>學習指南</h4>
+                        <p class="text-[10px] md:text-sm text-gray-600 hidden md:block">產生測驗小卡方便複習。</p>
+                    </div>
+                </div>
+
+                <!-- 右側問答 -->
+                <div class="md:col-span-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col h-[40vh] md:h-auto">
+                    <div class="bg-gray-100 p-2 md:p-3 border-b text-xs md:text-sm font-bold text-gray-600">對話與查證 (源碼溯源)</div>
+                    <div class="p-4 md:p-6 flex-grow overflow-y-auto custom-scroll">
+                        <div class="bg-blue-50 p-2 md:p-3 rounded-lg text-blue-800 text-xs md:text-sm mb-3 md:mb-4 w-[90%] md:w-[85%] ml-auto text-right">
+                            請幫我整理自然教材中，關於「水循環」的重點。
+                        </div>
+                        <div class="bg-gray-50 p-3 md:p-4 rounded-lg text-gray-800 text-xs md:text-sm border border-gray-200 relative leading-relaxed">
+                            重點如下：<br>
+                            1. 太陽照射讓水<strong class="text-blue-600">蒸發</strong>。 <span class="inline-block bg-gray-200 text-gray-500 text-[10px] md:text-xs px-1 rounded cursor-pointer hover:bg-primary hover:text-white">[1]</span><br>
+                            2. 水蒸氣遇冷<strong class="text-blue-600">凝結</strong>成雲。<span class="inline-block bg-gray-200 text-gray-500 text-[10px] md:text-xs px-1 rounded cursor-pointer hover:bg-primary hover:text-white">[2]</span><br>
+                            <br>
+                            <span class="text-[10px] md:text-xs text-secondary font-bold"><i class="fas fa-check-circle"></i> 附上註腳，點擊跳回原文段落，不怕 AI 亂編！</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 20: NotebookLM 超級亮點 -->
+        <section class="slide" data-title="超級亮點：Audio Overview">
+            <h2 class="text-2xl md:text-4xl font-black mb-2 md:mb-4 text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 px-2">🎧 超級殺手鐧：Audio Overview</h2>
+            <p class="text-sm md:text-xl text-gray-600 text-center mb-6 md:mb-10 px-4">一鍵將枯燥課文，變成生動的雙人英文 Podcast 廣播劇！</p>
+            
+            <div class="w-full max-w-4xl bg-dark text-white p-6 md:p-10 rounded-3xl shadow-2xl relative overflow-hidden mx-2">
+                <div class="absolute inset-0 opacity-10 flex items-center justify-center space-x-2 md:space-x-4">
+                    <div class="w-8 md:w-16 h-32 md:h-64 bg-white rounded-full"></div>
+                    <div class="w-8 md:w-16 h-48 md:h-96 bg-white rounded-full"></div>
+                    <div class="w-8 md:w-16 h-24 md:h-48 bg-white rounded-full"></div>
+                </div>
+
+                <div class="relative z-10 flex flex-col md:flex-row items-center justify-between">
+                    <div class="mb-6 md:mb-0 text-center md:text-left">
+                        <h3 class="text-xl md:text-3xl font-bold mb-2 md:mb-4">Deep Dive (深入探討)</h3>
+                        <p class="text-gray-400 mb-4 md:mb-6 max-w-sm text-xs md:text-base">兩位虛擬主持人會用超自然的語氣對話討論你的教材。適合用來作為雙語教學素材，或引起動機！</p>
+                        <button class="bg-white text-dark font-bold py-2 px-6 md:py-3 md:px-8 rounded-full hover:bg-gray-200 transition-colors flex items-center mx-auto md:mx-0 text-sm md:text-base">
+                            <i class="fas fa-play-circle text-xl md:text-2xl text-purple-600 mr-2"></i> 播放模擬音檔
+                        </button>
+                    </div>
+                    
+                    <div class="bg-gray-800 p-4 md:p-8 rounded-2xl flex items-end justify-center h-24 w-40 md:h-48 md:w-64 space-x-1 md:space-x-2">
+                        <div class="bar bg-pink-500"></div>
+                        <div class="bar bg-purple-500"></div>
+                        <div class="bar bg-indigo-500"></div>
+                        <div class="bar bg-blue-500"></div>
+                        <div class="bar bg-teal-500"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 21: Q&A -->
+        <section class="slide" data-title="Q & A 交流時間 (完)">
+            <div class="text-center w-full px-2">
+                <div class="text-[80px] md:text-[150px] text-gray-200 mb-[-30px] md:mb-[-60px] relative z-0">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h2 class="text-4xl md:text-6xl font-black text-dark relative z-10 mb-4 md:mb-6">Q & A 時間</h2>
+                <p class="text-lg md:text-2xl text-gray-600 relative z-10">關於 AI 融入國小教學的疑問，歡迎提出！</p>
+            </div>
+            <div class="mt-8 md:mt-16 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 w-full max-w-4xl px-4 relative z-10">
+                <div class="bg-white p-4 md:p-6 rounded-xl shadow text-center border-t-4 border-gray-300">
+                    <i class="fas fa-hand-paper text-2xl md:text-3xl text-gray-400 mb-2"></i>
+                    <h4 class="font-bold text-base md:text-lg">個資疑慮？</h4>
+                    <p class="text-xs md:text-sm text-gray-500 mt-2">請避免將學生的「真實全名」與「成績單」丟給 AI 分析，保護個資。</p>
+                </div>
+                <div class="bg-white p-4 md:p-6 rounded-xl shadow text-center border-t-4 border-gray-300">
+                    <i class="fas fa-copy text-2xl md:text-3xl text-gray-400 mb-2"></i>
+                    <h4 class="font-bold text-base md:text-lg">版權問題？</h4>
+                    <p class="text-xs md:text-sm text-gray-500 mt-2">AI 生成內容目前無著作權。帶學生參賽有爭議，但作為「備課輔助」出題非常安全。</p>
+                </div>
+            </div>
+            <p class="mt-10 md:mt-16 text-gray-400 text-sm md:text-base italic relative z-10">~ 謝謝各位老師的聆聽，明天就試著用 AI 備一堂課吧！ ~</p>
+        </section>
+
+    </div>
+
+    <!-- JS 邏輯 -->
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const progressBar = document.getElementById('progress-bar');
+        const pageIndicator = document.getElementById('page-indicator');
+        const menuModal = document.getElementById('menu-modal');
+        const menuLinksContainer = document.getElementById('menu-links');
+        
+        let isTyping = false; 
+        let typewriterTimeout;
+
+        // === 1. 漫畫觀看器 (動畫框架) ===
+        let currentComicPage = 0;
+        
+        // 【圖片框架設定區】
+        // 由於您的圖片包含 WEBP 與 PNG，請依照您實際的「檔名.副檔名」在這裡修改。
+        // （這裡預設第 0 張為 webp，其餘 1~10 為 png 作為範例，請根據您電腦裡的實際檔案調整）
+        const comicImages = [
+            "comic/0.webp", // 請確認您的 0 號圖片是 .webp 還是 .png
+            "comic/1.png",  
+            "comic/2.png", 
+            "comic/3.png", 
+            "comic/4.png",
+            "comic/5.png", 
+            "comic/6.png", 
+            "comic/7.png", 
+            "comic/8.png", 
+            "comic/9.png",
+            "comic/10.png",
+            "comic/11.png",
+            "comic/12.png",
+            "comic/13.png"
+        ];
+        const totalComicPages = comicImages.length;
+        
+        function updateComic() {
+            const comicImg = document.getElementById('comic-img');
+            const comicIndicator = document.getElementById('comic-indicator');
+            if (!comicImg) return;
+            
+            comicImg.style.opacity = '0.3'; // 翻頁時的淡出過場特效
+            setTimeout(() => {
+                // 從陣列中讀取正確的圖片路徑
+                comicImg.src = comicImages[currentComicPage];
+                if(comicIndicator) comicIndicator.innerText = `第 ${currentComicPage + 1} / ${totalComicPages} 頁`;
+                comicImg.style.opacity = '1'; // 載入後淡入
+            }, 150);
+        }
+
+        function prevComicPage(e) {
+            if(e) e.stopPropagation(); // 防止點擊按鈕時觸發了簡報換頁
+            if (currentComicPage > 0) {
+                currentComicPage--;
+                updateComic();
+            }
+        }
+
+        function nextComicPage(e) {
+            if(e) e.stopPropagation();
+            if (currentComicPage < totalComicPages - 1) {
+                currentComicPage++;
+                updateComic();
+            }
+        }
+
+        // === 2. 國小社會科打字機範例 ===
+        const quizContent = `老師您好！已經為您設計了以下考題：\n\n| 題號 | 題目 | 選項 | 答案 | 詳解 (易錯觀念) |\n|---|---|---|---|---|\n| 1 | 台灣哪種地形面積最大？ | (A)平原 (B)盆地 (C)山地 (D)丘陵 | C | 山地約佔三分之二。小朋友常誤以為我們住的平原最大！ |\n| 2 | 台灣「最高峰」是哪座山？ | (A)陽明山 (B)阿里山 (C)玉山 | C | 玉山主峰海拔3952公尺。 |\n\n**【生活情境素養題】**\n南部冬天常缺水。身為小學生，生活中可以做到哪兩件事來幫忙「節約用水」？\n*(評量重點：例如洗澡改淋浴、洗米水澆花等。)*`;
+
+        // === 3. 簡報核心邏輯 ===
+        function init() {
+            updateSlides();
+            generateMenu();
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+                else if (e.key === 'ArrowLeft') prevSlide();
+            });
+
+            let touchStartX = 0;
+            document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+            document.addEventListener('touchend', e => {
+                let touchEndX = e.changedTouches[0].screenX;
+                if (touchEndX < touchStartX - 40) nextSlide();
+                if (touchEndX > touchStartX + 40) prevSlide();
+            });
+            
+            // 初始化漫畫圖片的錯誤處理 (若本機端找不到圖片，顯示提示)
+            const comicImg = document.getElementById('comic-img');
+            if(comicImg) {
+                comicImg.onerror = function() {
+                    this.onerror = null;
+                    this.src = 'https://placehold.co/800x600/1e293b/a7f3d0?text=請確認圖片檔名與副檔名(webp/png)是否正確';
+                };
+            }
+        }
+
+        function updateSlides() {
+            slides.forEach((slide, index) => {
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                    if(slide.dataset.typewriter === "true" && !isTyping) startTypewriter();
+                    else if (slide.dataset.typewriter !== "true") resetTypewriter();
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+            progressBar.style.width = `${((currentSlide + 1) / slides.length) * 100}%`;
+            pageIndicator.innerText = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        function nextSlide() { if (currentSlide < slides.length - 1) { currentSlide++; updateSlides(); } }
+        function prevSlide() { if (currentSlide > 0) { currentSlide--; updateSlides(); } }
+        function goToSlide(index) { currentSlide = index; updateSlides(); toggleMenu(); }
+
+        function generateMenu() {
+            slides.forEach((slide, index) => {
+                const title = slide.dataset.title || `投影片 ${index + 1}`;
+                const btn = document.createElement('button');
+                btn.className = "text-left p-2 md:p-3 rounded-lg hover:bg-indigo-50 hover:text-primary transition-colors border border-transparent hover:border-indigo-100 flex items-center text-sm md:text-base";
+                btn.innerHTML = `<span class="bg-gray-100 text-gray-500 font-mono text-xs px-2 py-1 rounded mr-2 md:mr-3">${index + 1}</span> <span class="font-bold text-gray-700 truncate">${title}</span>`;
+                btn.onclick = () => goToSlide(index);
+                menuLinksContainer.appendChild(btn);
+            });
+        }
+
+        function toggleMenu() {
+            if (menuModal.classList.contains('hidden')) {
+                menuModal.classList.remove('hidden');
+                setTimeout(() => { menuModal.classList.remove('opacity-0'); menuModal.querySelector('div').classList.remove('scale-95'); }, 10);
+            } else {
+                menuModal.classList.add('opacity-0'); menuModal.querySelector('div').classList.add('scale-95');
+                setTimeout(() => { menuModal.classList.add('hidden'); }, 300);
+            }
+        }
+
+        function startTypewriter() {
+            isTyping = true;
+            const container = document.getElementById('typewriter-container');
+            const cursor = document.getElementById('cursor');
+            if(!container) return;
+            
+            container.innerHTML = ''; 
+            if(cursor) cursor.classList.add('opacity-100');
+            
+            let i = 0;
+            function typeWriter() {
+                if (i < quizContent.length && isTyping) {
+                    container.innerHTML += quizContent.charAt(i); i++;
+                    container.parentElement.scrollTop = container.parentElement.scrollHeight;
+                    typewriterTimeout = setTimeout(typeWriter, 15);
+                } else { 
+                    if(cursor) cursor.classList.remove('opacity-100'); 
+                }
+            }
+            typewriterTimeout = setTimeout(typeWriter, 500);
+        }
+
+        function resetTypewriter() {
+            isTyping = false; 
+            clearTimeout(typewriterTimeout);
+            const container = document.getElementById('typewriter-container');
+            if(container) container.innerHTML = '';
+        }
+
+        // 啟動簡報
+        init();
+    </script>
+</body>
+</html>
